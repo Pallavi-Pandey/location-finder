@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Map with Distance and Alert</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+</head>
+<body>
+    <!-- Create a div to hold the map -->
+    <div id="map" style="height: 400px; width: 100%;"></div>
+    <p id="distance">Distance: Calculating...</p>
+
+    <!-- Include an alert sound -->
+    <audio id="alertSound" src="alert.mp3" preload="auto"></audio>
+
+    <button id="alertButton">The school bus is 2 kilometers away</button>
+
+    <script>
+        // Initialize the map
+        var map = L.map('map').setView([0, 0], 10); // Default center and zoom
+
+        // Add a tile layer (you can choose a different provider if needed)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Define the fixed location's latitude and longitude
+        var fixedLocation = [28.644800, 77.216721];
+
+        // Create a marker for the fixed location
+        L.marker(fixedLocation).addTo(map)
+            .bindPopup('Fixed Location').openPopup();
+
+        // Check if the Speech Synthesis API is available
+        if ('speechSynthesis' in window) {
+            const sentence = 'The school bus is 2 kilometers away';
+            const lang = 'en-US'; // Set the language (you can change it as needed)
+            const volume = 1; // Set the volume to maximum (1)
+
+            function speakSentence() {
+                const speech = new SpeechSynthesisUtterance(sentence);
+                speech.lang = lang;
+                speech.volume = volume;
+
+                // Speak the text
+                window.speechSynthesis.speak(speech);
+            }
+
+            // Check if the Vibration API is available
+            if ('vibrate' in navigator) {
+                // Vibrate for 10 seconds
+                navigator.vibrate([10000]);
+            }
+
+            // Try to get the user's current location (requires HTTPS or a live website)
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    var userLat = position.coords.latitude;
+                    var userLng = position.coords.longitude;
+
+                    // Create a marker at the user's location
+                    L.marker([userLat, userLng]).addTo(map)
+                        .bindPopup('Your Current Location').openPopup();
+
+                    // Calculate the distance using the Haversine formula
+                    var distance = calculateDistance(userLat, userLng, fixedLocation[0], fixedLocation[1]);
+                    document.getElementById("distance").textContent = "Distance: " + distance.toFixed(2) + " kilometers";
+
+                    // Check if the distance is less than 50 kilometers
+                    if (distance < 50) {
+                        // Play the alert sound and speak the sentence 5 times with a 1-second delay
+                        for (let i = 0; i < 2; i++) {
+                            setTimeout(function() {
+                                document.getElementById("alertSound").play();
+                                speakSentence();
+                            }, i * 1000);
+                        }
+                    }
+                }, function(error) {
+                    console.error("Error getting user location: " + error.message);
+                });
+            } else {
+                console.error("Geolocation is not supported by your browser.");
+            }
+        } else {
+            console.error("Speech Synthesis is not supported by your browser.");
+        }
+
+        // Haversine formula to calculate the distance between two points
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius of the Earth in kilometers
+            const dLat = (lat2 - lat1) * (Math.PI / 180);
+            const dLon = (lon2 - lon1) * (Math.PI / 180);
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+    </script>
+</body>
+</html>
